@@ -229,7 +229,9 @@ def index():
       # Predict raw price value from the model
       raw_prediction = model.predict(features)[0]
 
-      # Format prediction into Indian Rupees layout
+      # Note: If your model was trained on USD data and you need to convert it to INR, 
+      # you can multiply raw_prediction by an exchange rate (e.g., raw_prediction * 83).
+      # Currently, it formats the raw model output directly into Indian Rupees format.
       formatted_price = format_inr(raw_prediction)
     except Exception as e:
       formatted_price = None
