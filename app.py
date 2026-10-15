@@ -8,6 +8,30 @@ app = Flask(__name__)
 with open('linear.pkl', 'rb') as f:
   model = pickle.load(f)
 
+
+def format_inr(amount):
+  """Formats a number into Indian Rupee style (lakhs, crores)."""
+  if amount < 0:
+    return f"-₹{format_inr(abs(amount))}"
+
+  # Round to nearest integer for clean display
+  s = str(int(round(amount)))
+  if len(s) <= 3:
+    return f"₹{s}"
+
+  # Extract last 3 digits
+  last_three = s[-3:]
+  other_digits = s[:-3]
+
+  # Format remaining digits in groups of 2
+  res = []
+  while len(other_digits) > 0:
+    res.insert(0, other_digits[-2:])
+    other_digits = other_digits[:-2]
+
+  return f"₹{','.join(res)},{last_three}"
+
+
 # HTML template with embedded modern CSS styling
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -174,10 +198,10 @@ HTML_TEMPLATE = """
             </div>
         </form>
 
-        {% if prediction is not none %}
+        {% if formatted_price is not none %}
         <div class="result-card">
             <h3>Estimated Property Price</h3>
-            <div class="price">${{ "{:,.2f}".format(prediction) }}</div>
+            <div class="price">{{ formatted_price }}</div>
         </div>
         {% endif %}
     </div>
@@ -188,7 +212,7 @@ HTML_TEMPLATE = """
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
-  prediction = None
+  formatted_price = None
   if request.method == 'POST':
     try:
       # Capture and cast form inputs to match model expectations[cite: 1]
@@ -202,12 +226,15 @@ def index():
           float(request.form['Neighborhood_Quality']),
       ]])
 
-      # Make the prediction
-      prediction = model.predict(features)[0]
-    except Exception as e:
-      prediction = None
+      # Predict raw price value from the model
+      raw_prediction = model.predict(features)[0]
 
-  return render_template_string(HTML_TEMPLATE, prediction=prediction)
+      # Format prediction into Indian Rupees layout
+      formatted_price = format_inr(raw_prediction)
+    except Exception as e:
+      formatted_price = None
+
+  return render_template_string(HTML_TEMPLATE, formatted_price=formatted_price)
 
 
 if __name__ == '__main__':
